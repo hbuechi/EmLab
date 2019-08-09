@@ -34,6 +34,7 @@ library(tidyverse)
 library(tibble)
 library(plyr)
 library(readr)
+library(lubridate)
 
 redbook_1984 <- read_csv("Redbook_Cal_Fire_Large_Damaging_Fire_Survey - 1984.csv")
 redbook_1985 <- read_csv("Redbook_Cal_Fire_Large_Damaging_Fire_Survey - 1985.csv")
@@ -72,6 +73,8 @@ redbook_2015 <- read_csv("Redbook_Cal_Fire_Large_Damaging_Fire_Survey - 2015.csv
 redbook_2016 <- read_csv("Redbook_Cal_Fire_Large_Damaging_Fire_Survey - 2016.csv")
 redbook_2017 <- read_csv("Redbook_Cal_Fire_Large_Damaging_Fire_Survey - 2017.csv")
 
+usgs_fires <- read_csv("USGS_historical_fire_att_table.csv")
+
 ```
 
 ```{r add_column_loop}
@@ -89,10 +92,28 @@ calfire_data <- rbind.fill(list)
 
 ```
 
+```{r classes}
+
+#lapply(calfire_data, class)
+
+calfire_data$Cause <- as.character(calfire_data$Cause) # this vector was logical...
+calfire_data$CDF_acres_burned <- as.numeric(calfire_data$CDF_acres_burned)
+calfire_data$Other_acres_burned <- as.numeric(calfire_data$Other_acres_burned)
+calfire_data$Destroyed_structures <- as.numeric(calfire_data$Destroyed_structures)
+calfire_data$Damaged_structures <- as.numeric(calfire_data$Damaged_structures)
+calfire_data$Firefighter_fatalities <- as.numeric(calfire_data$Firefighter_fatalities)
+calfire_data$Civilian_fatalities <- as.numeric(calfire_data$Civilian_fatalities)
+calfire_data$Start <- as.Date(calfire_data$Start)
+calfire_data$Contained <- as.Date(calfire_data$Contained)
+
+```
+
+
+
 ```{r standardize_veg_CDF}
 
-unique(calfire_data$Veg_type)
-unique(calfire_data$DPA2)
+#unique(calfire_data$Veg_type)
+#unique(calfire_data$DPA2)
 
 calfire_data <- calfire_data %>% 
   mutate(DPA=recode(DPA, "Cal Fire"="CDF", "CalFire"="CDF")) %>% 
@@ -120,15 +141,17 @@ calfire_data <- calfire_data %>%
   mutate(Veg_type=recode(Veg_type, "TGWAPB"="TGWAB")) %>%
   mutate(Veg_type=recode(Veg_type, "GAPB"="GAB"))
 
+# Figure out a way to do this by "connecting" two dfs
+
 ```
 
 ```{r standardize_cause}
 
-unique(calfire_data$Cause)
+#unique(calfire_data$Cause)
 
 calfire_data <- calfire_data %>% 
   mutate(Cause=recode(Cause, "Equip. Use"="Equipment use")) %>% 
-  mutate(Cause=recode(Cause, "N/A"=NA)) %>% 
+  mutate(Cause=recode(Cause, "N/A"="NA")) %>%   
   mutate(Cause=recode(Cause, "Cmpr."="Campfire")) %>%
   mutate(Cause=recode(Cause, "Smkr."="Smoking")) %>% 
   mutate(Cause=recode(Cause, "Misc."="Misc")) %>% 
@@ -140,13 +163,76 @@ calfire_data <- calfire_data %>%
   mutate(Cause=recode(Cause, "Playing/W Fire"="Playing with fire")) %>% 
   mutate(Cause=recode(Cause, "Miscellaneous"="Misc")) %>% 
   mutate(Cause=recode(Cause, "Equip."="Equipment use")) %>% 
-  mutate(Cause=recode(Cause, "Play w/fire"="Playing with fire"))
+  mutate(Cause=recode(Cause, "Play w/fire"="Playing with fire")) %>% 
+  mutate(Cause=recode(Cause, "Power"="Electrical power")) %>%
+  mutate(Cause=recode(Cause, "Undet."="Undetermined")) %>%
+  mutate(Cause=recode(Cause, "Smoker"="Smoking")) %>%
+  mutate(Cause=recode(Cause, "Play/W/Fire"="Playing with fire")) %>%
+  mutate(Cause=recode(Cause, "Arcing Pwerline"="Powerlines")) %>%
+  mutate(Cause=recode(Cause, "Powerline"="Powerlines")) %>%
+  mutate(Cause=recode(Cause, "Electrical Pwr"="Electrical power")) %>%
+  mutate(Cause=recode(Cause, "Exposure Fire"="Exposure")) %>%
+  mutate(Cause=recode(Cause, "Equipment"="Equipment use")) %>%
+  mutate(Cause=recode(Cause, "Elec. Pow."="Electrical power")) %>%
+  mutate(Cause=recode(Cause, "Munition"="Shooting")) %>%
+  mutate(Cause=recode(Cause, "PWF"="Playing with fire")) %>%
+  mutate(Cause=recode(Cause, "Elect. Power"="Electrical power")) %>%
+  mutate(Cause=recode(Cause, "Under Inv."="Under investigation")) %>%
+  mutate(Cause=recode(Cause, "Lawn Mower"="Equipment use")) %>%
+  mutate(Cause=recode(Cause, "Under Invest."="Under investigation")) %>%
+  mutate(Cause=recode(Cause, "Shooter"="Shooting")) %>%
+  mutate(Cause=recode(Cause, "Welding"="Equipment use")) %>%
+  mutate(Cause=recode(Cause, "P-W-F"="Playing with fire")) %>%
+  mutate(Cause=recode(Cause, "Inidentified"="Unidentified")) %>%
+  mutate(Cause=recode(Cause, "Miscellaneous Human"="Misc")) %>%
+  mutate(Cause=recode(Cause, "Other Cause"="Other")) %>%
+  mutate(Cause=recode(Cause, "Electrical"="Electrical power")) %>%
+  mutate(Cause=recode(Cause, "UI"="Unidentified")) %>%
+  mutate(Cause=recode(Cause, "LIghtning"="Lightning")) %>%
+  mutate(Cause=recode(Cause, "Electrical Power"="Electrical power")) %>%
+  mutate(Cause=recode(Cause, "Playing with Fire"="Playing with fire"))
 
-# Rekindle debris? Equip. RR?
+# Rekindle debris? Equip. RR? Exposure? VMP Burn? UL? Rekindle? Control Burn? Hostile Fire? Escape Control? Debris Burning? Human? Structure? Debris, veg burn? Incediary? Open Outdoors? Miscellaneous Human? Misuse of Fire?
   
+# Figure out a way to do this by "connecting" two dfs
+
 ```
 
+```{r fire_names}
 
+usgs_fires_1984 <- usgs_fires %>% 
+  filter(YEAR_ >= 1984) %>% 
+  filter(GIS_ACRES >= 30)
+
+cdf_fire_names <- calfire_data$Fire_name # 1764 obs
+usgs_fire_names <- usgs_fires_1984$FIRE_NAME # 6101 obs
+
+usgs_fire_names <- tolower(usgs_fire_names)
+cdf_fire_names <- tolower(cdf_fire_names)
+
+cdf_fire_diff <- setdiff(cdf_fire_names, usgs_fire_names) # 551 in CDF that are not in USGS (20%: 551/1764)
+usgs_fire_diff <- setdiff(usgs_fire_names, cdf_fire_names) # 2782 in USGS that are not in CDF (45%: 2782/6101)
+
+cdf_fire_diff <- as.data.frame(cdf_fire_diff)
+usgs_fire_diff <- as.data.frame(usgs_fire_diff)
+
+write_csv(cdf_fire_diff, path = "cdf_fire_diff.csv")
+write_csv(usgs_fire_diff, path = "usgs_fire_diff.csv")
+
+# don't stress about this right now
+
+```
+
+```{r prep_join}
+
+# upper case fire name to do join in Arc
+
+calfire_data$Fire_name <- toupper(calfire_data$Fire_name)
+calfire_data <- rename(calfire_data, FIRE_NAME = Fire_name)
+
+write_csv(calfire_data, path = "calfire_data.csv")
+
+```
 
 
 
