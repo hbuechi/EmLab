@@ -87,7 +87,7 @@ for (i in 1:length(list)){
  list[[i]] <- add_column(list[[i]], !!!cols[!names(cols) %in% names(list[[i]])])
 }
 
-calfire_data <- rbind.fill(list)
+calfire_data <- rbind.fill(list) # plyr...
 #write_csv(calfire_data, path = "calfire_data.csv")
 
 ```
@@ -221,6 +221,8 @@ write_csv(usgs_fire_diff, path = "usgs_fire_diff.csv")
 
 # don't stress about this right now
 
+# git stuff: https://jennybc.github.io/2014-05-12-ubc/ubc-r/session03_git.html
+
 ```
 
 ```{r prep_join}
@@ -228,7 +230,7 @@ write_csv(usgs_fire_diff, path = "usgs_fire_diff.csv")
 # upper case fire name to do join in Arc
 
 calfire_data$Fire_name <- toupper(calfire_data$Fire_name)
-calfire_data <- rename(calfire_data, FIRE_NAME = Fire_name)
+calfire_data <- dplyr::rename(calfire_data, FIRE_NAME = Fire_name)
 
 write_csv(calfire_data, path = "calfire_data.csv")
 
