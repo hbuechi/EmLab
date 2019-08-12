@@ -24,15 +24,15 @@ Wrangling single large dataframe:
 2) Standardize Veg_type
 3) Standardize Cause
       Tabulate "Cause" possibilities --> little table function (ESM 244 HW on my laptop) OR count(dataframe, "column heading")
-4) Add column indicating (1) for Destroyed_structures may include damaged structures (ex. 2007, 2008a) - if/then by year
-5) Add column indicating (1) for Firefighter_fatalities includes all known fatalities (only 1987)
+4)** Add column indicating (1) for Destroyed_structures may include damaged structures (ex. 2007, 2008a) - if/then by year
+5)** Add column indicating (1) for Firefighter_fatalities includes all known fatalities (only 1987)
 
 
 ```{r data_packages, message=FALSE}
 
 library(tidyverse)
 library(tibble)
-library(plyr)
+library(plyr) # for rbind.fill()
 library(readr)
 library(lubridate)
 
@@ -79,22 +79,25 @@ usgs_fires <- read_csv("USGS_historical_fire_att_table.csv")
 
 ```{r add_column_loop}
 
-list <- list(redbook_1984, redbook_1985, redbook_1986, redbook_1987, redbook_1988, redbook_1989, redbook_1990, redbook_1991, redbook_1992, redbook_1993, redbook_1994, redbook_1995, redbook_1996, redbook_1997, redbook_1998, redbook_1999, redbook_2000, redbook_2001, redbook_2002, redbook_2003, redbook_2004, redbook_2005, redbook_2006, redbook_2007, redbook_2008a, redbook_2008b, redbook_2009a, redbook_2009b, redbook_2010, redbook_2011, redbook_2012, redbook_2013, redbook_2014, redbook_2015, redbook_2016, redbook_2017)
+# I need to add columns to most, if not all, of the Cal Fire dataframes so that they can be bound together into a single dataframe
 
-cols <- c(Incident_number = NA_real_, Region = NA_real_, Ranger_unit = NA_real_, Ranger_unit2 = NA_real_, National_forest = NA_character_, County = NA_real_, County2 = NA_real_, County3 = NA_real_, Fire_name2 = NA_real_, DPA = NA_real_, DPA2 = NA_real_, CDF_acres_burned = NA_real_, Other_acres_burned = NA_real_, Veg_type = NA_real_, Cause = NA_real_, Destroyed_structures = NA_real_, Damaged_structures = NA_real_, Firefighter_fatalities = NA_real_, Civilian_fatalities = NA_real_)
+list <- list(redbook_1984, redbook_1985, redbook_1986, redbook_1987, redbook_1988, redbook_1989, redbook_1990, redbook_1991, redbook_1992, redbook_1993, redbook_1994, redbook_1995, redbook_1996, redbook_1997, redbook_1998, redbook_1999, redbook_2000, redbook_2001, redbook_2002, redbook_2003, redbook_2004, redbook_2005, redbook_2006, redbook_2007, redbook_2008a, redbook_2008b, redbook_2009a, redbook_2009b, redbook_2010, redbook_2011, redbook_2012, redbook_2013, redbook_2014, redbook_2015, redbook_2016, redbook_2017) # list of dfs for the for loop
+
+cols <- c(Incident_number = NA_real_, Region = NA_real_, Ranger_unit = NA_real_, Ranger_unit2 = NA_real_, National_forest = NA_character_, County = NA_real_, County2 = NA_real_, County3 = NA_real_, Fire_name2 = NA_real_, DPA = NA_real_, DPA2 = NA_real_, CDF_acres_burned = NA_real_, Other_acres_burned = NA_real_, Veg_type = NA_real_, Cause = NA_real_, Destroyed_structures = NA_real_, Damaged_structures = NA_real_, Firefighter_fatalities = NA_real_, Civilian_fatalities = NA_real_) # vector of column headings to be populated with NAs if they are being added
 
 for (i in 1:length(list)){
  list[[i]] <- add_column(list[[i]], !!!cols[!names(cols) %in% names(list[[i]])])
 }
 
-calfire_data <- rbind.fill(list) # plyr...
-#write_csv(calfire_data, path = "calfire_data.csv")
+calfire_data <- rbind.fill(list) # binds the list of dataframes together
+
+#write_csv(calfire_data, path = "calfire_data.csv") # check to make sure it looks good in Excel (easier to scroll quickly)
 
 ```
 
 ```{r classes}
 
-#lapply(calfire_data, class)
+#lapply(calfire_data, class) # check the class of each column in the dataframe and change as needed
 
 calfire_data$Cause <- as.character(calfire_data$Cause) # this vector was logical...
 calfire_data$CDF_acres_burned <- as.numeric(calfire_data$CDF_acres_burned)
@@ -111,6 +114,8 @@ calfire_data$Contained <- as.Date(calfire_data$Contained)
 
 
 ```{r standardize_veg_CDF}
+
+# check out all of the values for Veg_type and DPA, standardize as needed. I'm sure this could be made into shorter code, but I didn't now how. See Google Drive for metadata.
 
 #unique(calfire_data$Veg_type)
 #unique(calfire_data$DPA2)
@@ -146,6 +151,8 @@ calfire_data <- calfire_data %>%
 ```
 
 ```{r standardize_cause}
+
+# same notes as above, but there are some causes that I haven't standardized yet. See list at the bottom of this chunk.
 
 #unique(calfire_data$Cause)
 
@@ -200,26 +207,30 @@ calfire_data <- calfire_data %>%
 
 ```{r fire_names}
 
-usgs_fires_1984 <- usgs_fires %>% 
-  filter(YEAR_ >= 1984) %>% 
+# Check out the common fires.
+
+usgs_fires_1984 <- usgs_fires %>% # attribute table from USGS Historic Fires shapefiles
+  filter(YEAR_ >= 1984) %>% # filtered to make it more similar to my Cal Fire dataset
   filter(GIS_ACRES >= 30)
 
 cdf_fire_names <- calfire_data$Fire_name # 1764 obs
 usgs_fire_names <- usgs_fires_1984$FIRE_NAME # 6101 obs
 
-usgs_fire_names <- tolower(usgs_fire_names)
-cdf_fire_names <- tolower(cdf_fire_names)
+usgs_fire_names <- toupper(usgs_fire_names) # make both upper case in order to do joins and comparisons
+cdf_fire_names <- toupper(cdf_fire_names)
+
+# print list of differences by comparing each dataset to the other separately
 
 cdf_fire_diff <- setdiff(cdf_fire_names, usgs_fire_names) # 551 in CDF that are not in USGS (20%: 551/1764)
 usgs_fire_diff <- setdiff(usgs_fire_names, cdf_fire_names) # 2782 in USGS that are not in CDF (45%: 2782/6101)
 
-cdf_fire_diff <- as.data.frame(cdf_fire_diff)
+cdf_fire_diff <- as.data.frame(cdf_fire_diff) # make the vectors into dataframes so that I can write to csv
 usgs_fire_diff <- as.data.frame(usgs_fire_diff)
 
 write_csv(cdf_fire_diff, path = "cdf_fire_diff.csv")
 write_csv(usgs_fire_diff, path = "usgs_fire_diff.csv")
 
-# don't stress about this right now
+# don't worry about matching more fires right now...
 
 # git stuff: https://jennybc.github.io/2014-05-12-ubc/ubc-r/session03_git.html
 
@@ -230,7 +241,7 @@ write_csv(usgs_fire_diff, path = "usgs_fire_diff.csv")
 # upper case fire name to do join in Arc
 
 calfire_data$Fire_name <- toupper(calfire_data$Fire_name)
-calfire_data <- dplyr::rename(calfire_data, FIRE_NAME = Fire_name)
+calfire_data <- dplyr::rename(calfire_data, FIRE_NAME = Fire_name) # this didn't stay capitalized once I imported it to Arc, so I manually changed and saved it in Excel... Weird.
 
 write_csv(calfire_data, path = "calfire_data.csv")
 
